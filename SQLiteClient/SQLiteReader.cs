@@ -12,7 +12,7 @@ public class SQLiteReader: ISqlReader
     private SQLite? m_sql;
     private bool m_fAttached = false;
     private SQLiteDataReader? m_sqlr = null;
-    private Guid m_crids;
+    private readonly Guid m_crids;
 
     private SQLiteDataReader _Reader
     {
@@ -62,14 +62,6 @@ public class SQLiteReader: ISqlReader
         m_sql = sql;
         if (m_sql != null)
             m_fAttached = true;
-    }
-
-    public void ExecuteQuery(
-        SqlCommandTextInit cmdText,
-        string sResourceConnString,
-        CustomizeCommandDelegate? customizeDelegate = null)
-    {
-        ExecuteQuery(cmdText.CommandText, sResourceConnString, customizeDelegate, cmdText.Aliases);
     }
 
     public delegate void RetriableDelegate();
@@ -134,9 +126,9 @@ public class SQLiteReader: ISqlReader
             throw new SqlException("could not open sql connection");
 
         SQLiteCommand sqlcmd = m_sql.CreateCommandInternal();
-        sqlcmd.CommandText = sQuery;
+        ((ISqlCommand)sqlcmd).CommandText = sQuery;
         if (m_sql.Transaction != null)
-            sqlcmd.Transaction = m_sql.Transaction;
+            ((ISqlCommand)sqlcmd).Transaction = m_sql.Transaction;
 
         if (customizeDelegate != null)
             customizeDelegate(sqlcmd);
@@ -159,71 +151,25 @@ public class SQLiteReader: ISqlReader
         }
     }
 
-    public static T DoGenericMultiSetQueryDelegateRead<T>(
-        SQLite sql,
-        Guid crids,
-        string sQuery,
-        ISqlReader.DelegateMultiSetReader<T> delegateReader,
-        CustomizeCommandDelegate? customizeDelegate = null) where T : new()
-    {
-        SQLiteReader? sqlr = null;
+    Int16 ISqlReader.GetInt16(int index) => _Reader.GetInt16(index);
+    Int32 ISqlReader.GetInt32(int index) => _Reader.GetInt32(index);
+    string ISqlReader.GetString(int index) => _Reader.GetString(index);
+    Guid ISqlReader.GetGuid(int index) => Guid.Parse(_Reader.GetString(index));
+    double ISqlReader.GetDouble(int index) => _Reader.GetDouble(index);
+    Int64 ISqlReader.GetInt64(int index) => _Reader.GetInt64(index);
+    DateTime ISqlReader.GetDateTime(int index) => _Reader.GetDateTime(index);
 
-        if (delegateReader == null)
-            throw new Exception("must provide delegate reader");
+    Int16? ISqlReader.GetNullableInt16(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt16(index);
+    Int32? ISqlReader.GetNullableInt32(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt32(index);
+    string? ISqlReader.GetNullableString(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetString(index);
+    Guid? ISqlReader.GetNullableGuid(int index) => _Reader.IsDBNull(index) ? null : Guid.Parse(_Reader.GetString(index));
+    double? ISqlReader.GetNullableDouble(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetDouble(index);
+    Int64? ISqlReader.GetNullableInt64(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt64(index);
+    DateTime? ISqlReader.GetNullableDateTime(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetDateTime(index);
 
-        try
-        {
-            string sCmd = sQuery;
+    bool ISqlReader.IsDBNull(int index) => _Reader.IsDBNull(index);
 
-            sqlr = new(sql);
-            sqlr.ExecuteQuery(sQuery, null, customizeDelegate);
-
-            int recordSet = 0;
-
-            T t = new();
-            do
-            {
-                bool fOnce = false;
-
-                while (sqlr.Read())
-                {
-                    delegateReader(sqlr, crids, recordSet, ref t);
-                    fOnce = true;
-                }
-
-                if (!fOnce)
-                    throw new SqlExceptionNoResults();
-
-                recordSet++;
-            } while (sqlr.NextResult());
-
-            return t;
-        }
-        finally
-        {
-            sqlr?.Close();
-        }
-    }
-
-    public Int16 GetInt16(int index) => _Reader.GetInt16(index);
-    public Int32 GetInt32(int index) => _Reader.GetInt32(index);
-    public string GetString(int index) => _Reader.GetString(index);
-    public Guid GetGuid(int index) => Guid.Parse(_Reader.GetString(index));
-    public double GetDouble(int index) => _Reader.GetDouble(index);
-    public Int64 GetInt64(int index) => _Reader.GetInt64(index);
-    public DateTime GetDateTime(int index) => _Reader.GetDateTime(index);
-
-    public Int16? GetNullableInt16(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt16(index);
-    public Int32? GetNullableInt32(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt32(index);
-    public string? GetNullableString(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetString(index);
-    public Guid? GetNullableGuid(int index) => _Reader.IsDBNull(index) ? null : Guid.Parse(_Reader.GetString(index));
-    public double? GetNullableDouble(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetDouble(index);
-    public Int64? GetNullableInt64(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt64(index);
-    public DateTime? GetNullableDateTime(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetDateTime(index);
-
-    public bool IsDBNull(int index) => _Reader.IsDBNull(index);
-
-    public Type GetFieldAffinity(int index)
+    Type ISqlReader.GetFieldAffinity(int index)
     {
         TypeAffinity affinity = _Reader.GetFieldAffinity(index);
 
@@ -250,20 +196,20 @@ public class SQLiteReader: ISqlReader
         throw new SqlException($"affinity {affinity} not recognized for field {index}");
     }
 
-    public string GetFieldName(int index) => _Reader.GetName(index);
-    public Type GetFieldType(int index) => _Reader.GetFieldType(index) ?? typeof(void);
-    public int GetFieldCount() => _Reader.FieldCount;
-    public object GetNativeValue(int index) => _Reader.GetValue(index);
+    string ISqlReader.GetFieldName(int index) => _Reader.GetName(index);
+    Type ISqlReader.GetFieldType(int index) => _Reader.GetFieldType(index) ?? typeof(void);
+    int ISqlReader.GetFieldCount() => _Reader.FieldCount;
+    object ISqlReader.GetNativeValue(int index) => _Reader.GetValue(index);
 
-    public bool NextResult() => m_sqlr?.NextResult() ?? false;
-    public bool Read() => m_sqlr?.Read() ?? false;
+    bool ISqlReader.NextResult() => m_sqlr?.NextResult() ?? false;
+    bool ISqlReader.Read() => m_sqlr?.Read() ?? false;
 
-    public void Close()
+    void ISqlReader.Close()
     {
         m_sqlr?.Close();
         m_sqlr?.Dispose();
 
         if (!m_fAttached)
-            m_sql?.Close();
+            ((ISql?)m_sql)?.Close();
     }
 }

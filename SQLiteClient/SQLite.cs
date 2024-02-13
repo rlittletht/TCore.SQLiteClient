@@ -58,12 +58,12 @@ public class SQLite : ISql
         return new SQLite(sqlc, null);
     }
 
-    public void Close()
+    void ISql.Close()
     {
         if (InTransaction)
-            Rollback();
+            ((ISql)this).Rollback();
 
-        m_transaction?.Dispose();
+        ((ISqlTransaction?)m_transaction)?.Dispose();
         m_sqlc?.Close();
         m_sqlc?.Dispose();
     }
@@ -71,7 +71,7 @@ public class SQLite : ISql
 
     #region Commands
 
-    public ISqlCommand CreateCommand()
+    ISqlCommand ISql.CreateCommand()
     {
         return new SQLiteCommand(Connection.CreateCommand());
     }
@@ -84,12 +84,12 @@ public class SQLite : ISql
 
     #region Non Queries
 
-    public void ExecuteNonQuery(
+    void ISql.ExecuteNonQuery(
         string commandText,
-        CustomizeCommandDelegate? customizeParams = null,
-        TableAliases? aliases = null)
+        CustomizeCommandDelegate? customizeParams,
+        TableAliases? aliases)
     {
-        ISqlCommand sqlcmd = CreateCommand();
+        ISqlCommand sqlcmd = ((ISql)this).CreateCommand();
 
         try
         {
@@ -108,11 +108,11 @@ public class SQLite : ISql
         }
     }
 
-    public void ExecuteNonQuery(
+    void ISql.ExecuteNonQuery(
         SqlCommandTextInit cmdText,
-        CustomizeCommandDelegate? customizeParams = null)
+        CustomizeCommandDelegate? customizeParams)
     {
-        ExecuteNonQuery(cmdText.CommandText, customizeParams, cmdText.Aliases);
+        ((ISql)this).ExecuteNonQuery(cmdText.CommandText, customizeParams, cmdText.Aliases);
     }
     #endregion
 
@@ -120,7 +120,7 @@ public class SQLite : ISql
 
     private int NExecuteScalar(string sQuery, TableAliases? aliases = null)
     {
-        ISqlCommand sqlcmd = CreateCommand();
+        ISqlCommand sqlcmd = ((ISql)this).CreateCommand();
 
         try
         {
@@ -138,9 +138,9 @@ public class SQLite : ISql
         }
     }
 
-    public string SExecuteScalar(SqlCommandTextInit cmdText)
+    string ISql.SExecuteScalar(SqlCommandTextInit cmdText)
     {
-        ISqlCommand sqlcmd = CreateCommand();
+        ISqlCommand sqlcmd = ((ISql)this).CreateCommand();
 
         try
         {
@@ -156,14 +156,14 @@ public class SQLite : ISql
         }
     }
 
-    public int NExecuteScalar(SqlCommandTextInit cmdText)
+    int ISql.NExecuteScalar(SqlCommandTextInit cmdText)
     {
         return NExecuteScalar(cmdText.CommandText, cmdText.Aliases);
     }
 
-    public DateTime DttmExecuteScalar(SqlCommandTextInit cmdText)
+    DateTime ISql.DttmExecuteScalar(SqlCommandTextInit cmdText)
     {
-        string s = SExecuteScalar(cmdText);
+        string s = ((ISql)this).SExecuteScalar(cmdText);
 
         return DateTime.Parse(SQLite.Iso8601DateFromPackedSqliteDate(s));
     }
@@ -172,11 +172,11 @@ public class SQLite : ISql
 
     #region Readers
 
-    public ISqlReader ExecuteQuery(
+    ISqlReader ISql.ExecuteQuery(
         Guid crids,
         string query,
-        TableAliases? aliases = null,
-        CustomizeCommandDelegate? customizeDelegate = null)
+        TableAliases? aliases,
+        CustomizeCommandDelegate? customizeDelegate)
     {
         SqlSelect selectTags = new SqlSelect();
 
@@ -199,22 +199,22 @@ public class SQLite : ISql
         }
         catch
         {
-            sqlr?.Close();
+            ((ISqlReader?)sqlr)?.Close();
             throw;
         }
     }
 
-    public T ExecuteDelegatedQuery<T>(
+    T ISql.ExecuteDelegatedQuery<T>(
         Guid crids,
         string query,
         ISqlReader.DelegateReader<T> delegateReader,
-        TableAliases? aliases = null,
-        CustomizeCommandDelegate? customizeDelegate = null) where T : new()
+        TableAliases? aliases,
+        CustomizeCommandDelegate? customizeDelegate)
     {
         if (delegateReader == null)
             throw new Exception("must provide delegate reader");
 
-        ISqlReader? sqlr = ExecuteQuery(crids, query, aliases, customizeDelegate);
+        ISqlReader? sqlr = ((ISql)this).ExecuteQuery(crids, query, aliases, customizeDelegate);
 
         try
         {
@@ -238,11 +238,11 @@ public class SQLite : ISql
         }
     }
 
-    public T ExecuteMultiSetDelegatedQuery<T>(
-        Guid crids, string sQuery, ISqlReader.DelegateMultiSetReader<T> delegateReader, TableAliases? aliases, CustomizeCommandDelegate? customizeDelegate = null) where T : new() =>
+    T ISql.ExecuteMultiSetDelegatedQuery<T>(
+        Guid crids, string sQuery, ISqlReader.DelegateMultiSetReader<T> delegateReader, TableAliases? aliases, CustomizeCommandDelegate? customizeDelegate) =>
         throw new SqlExceptionNotImplementedInThisClient();
 
-    public ISqlReader CreateReader()
+    ISqlReader ISql.CreateReader()
     {
         return new SQLiteReader(this);
     }
@@ -251,7 +251,7 @@ public class SQLite : ISql
 
     #region Transactions
 
-    public void BeginTransaction()
+    void ISql.BeginTransaction()
     {
         if (InTransaction)
             throw new SqlExceptionInTransaction();
@@ -262,7 +262,7 @@ public class SQLite : ISql
             5000);
     }
 
-    public void BeginExclusiveTransaction()
+    void ISql.BeginExclusiveTransaction()
     {
         if (InTransaction)
             throw new SqlExceptionInTransaction();
@@ -275,34 +275,34 @@ public class SQLite : ISql
             5000);
     }
 
-    public void Rollback()
+    void ISql.Rollback()
     {
         if (!InTransaction)
             throw new SqlExceptionNotInTransaction();
 
         try
         {
-            m_transaction!.Rollback();
+            ((ISqlTransaction?)m_transaction)!.Rollback();
         }
         finally
         {
-            m_transaction?.Dispose();
+            ((ISqlTransaction?)m_transaction)?.Dispose();
             m_transaction = null;
         }   
     }
 
-    public void Commit()
+    void ISql.Commit()
     {
         if (!InTransaction)
             throw new SqlExceptionNotInTransaction();
 
         try
         {
-            m_transaction!.Commit();
+            ((ISqlTransaction?)m_transaction)!.Commit();
         }
         finally
         {
-            m_transaction?.Dispose();
+            ((ISqlTransaction?)m_transaction)?.Dispose();
             m_transaction = null;
         }
     }

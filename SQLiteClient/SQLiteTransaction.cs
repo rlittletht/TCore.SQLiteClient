@@ -11,7 +11,7 @@ public class SQLiteTransaction: ISqlTransaction
         _Transaction = transaction;
     }
 
-    public void Rollback() => _Transaction.Rollback();
-    public void Commit() => _Transaction.Commit();
-    public void Dispose() => _Transaction.Dispose();
+    void ISqlTransaction.Rollback() => _Transaction.Rollback();
+    void ISqlTransaction.Commit() => _Transaction.Commit();
+    void ISqlTransaction.Dispose() => _Transaction.Dispose();
 }

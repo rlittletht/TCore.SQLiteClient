@@ -9,7 +9,7 @@
 		<Description>Layer provides SQLite Client implementation on top of System.Data.SQLite.Core </Description>
 		<PackageId>TCore.SQLiteClient</PackageId>
 		<Title>TCore SQLiteClient implementation</Title>
-		<Version>1.1.0.0</Version>
+		<Version>1.2.0.0</Version>
 		<Authors>Robert Little</Authors>
 		<Company>Robert Little</Company>
 		<Product>TCore.SQLiteClient</Product>
@@ -18,9 +18,6 @@
 
 	<ItemGroup>
 	  <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118.0" />
-	  <PackageReference Include="TCore.SqlCore" Version="1.1.0" />
-	</ItemGroup>
-	<ItemGroup>
-		<ProjectReference Include="..\..\TCore.SqlCore\SqlCore\SqlCore.csproj" />
+	  <PackageReference Include="TCore.SqlCore" Version="1.2.0" />
 	</ItemGroup>
 </Project>
