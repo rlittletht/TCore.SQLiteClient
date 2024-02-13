@@ -20,5 +20,7 @@
 	  <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118.0" />
 	  <PackageReference Include="TCore.SqlCore" Version="1.1.0" />
 	</ItemGroup>
-	
+	<ItemGroup>
+		<ProjectReference Include="..\..\TCore.SqlCore\SqlCore\SqlCore.csproj" />
+	</ItemGroup>
 </Project>

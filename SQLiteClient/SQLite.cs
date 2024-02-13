@@ -171,12 +171,12 @@ public class SQLite : ISql
 #endregion
 
     #region Readers
-    public T DoGenericQueryDelegateRead<T>(
+
+    public ISqlReader ExecuteQuery(
         Guid crids,
         string query,
-        ISqlReader.DelegateReader<T> delegateReader,
         TableAliases? aliases = null,
-        CustomizeCommandDelegate? customizeDelegate = null) where T : new()
+        CustomizeCommandDelegate? customizeDelegate = null)
     {
         SqlSelect selectTags = new SqlSelect();
 
@@ -188,9 +188,6 @@ public class SQLite : ISql
 
         SQLiteReader? sqlr = null;
 
-        if (delegateReader == null)
-            throw new Exception("must provide delegate reader");
-
         try
         {
             string sCmd = sQuery;
@@ -198,6 +195,29 @@ public class SQLite : ISql
             sqlr = new(this);
             sqlr.ExecuteQuery(sQuery, null, customizeDelegate);
 
+            return sqlr;
+        }
+        catch
+        {
+            sqlr?.Close();
+            throw;
+        }
+    }
+
+    public T ExecuteDelegatedQuery<T>(
+        Guid crids,
+        string query,
+        ISqlReader.DelegateReader<T> delegateReader,
+        TableAliases? aliases = null,
+        CustomizeCommandDelegate? customizeDelegate = null) where T : new()
+    {
+        if (delegateReader == null)
+            throw new Exception("must provide delegate reader");
+
+        ISqlReader? sqlr = ExecuteQuery(crids, query, aliases, customizeDelegate);
+
+        try
+        {
             T t = new();
             bool fOnce = false;
 
@@ -214,14 +234,19 @@ public class SQLite : ISql
         }
         finally
         {
-            sqlr?.Close();
+            sqlr.Close();
         }
     }
 
-    public T DoGenericMultiSetQueryDelegateRead<T>(
-        Guid crids, string sQuery, ISqlReader.DelegateMultiSetReader<T> delegateReader, CustomizeCommandDelegate? customizeDelegate = null) where T : new() =>
+    public T ExecuteMultiSetDelegatedQuery<T>(
+        Guid crids, string sQuery, ISqlReader.DelegateMultiSetReader<T> delegateReader, TableAliases? aliases, CustomizeCommandDelegate? customizeDelegate = null) where T : new() =>
         throw new SqlExceptionNotImplementedInThisClient();
-   
+
+    public ISqlReader CreateReader()
+    {
+        return new SQLiteReader(this);
+    }
+
 #endregion
 
     #region Transactions
