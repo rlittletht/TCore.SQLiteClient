@@ -84,7 +84,7 @@ public class SQLite : ISql
 
     #region Non Queries
 
-    void ISql.ExecuteNonQuery(
+    int ISql.ExecuteNonQuery(
         string commandText,
         CustomizeCommandDelegate? customizeParams,
         TableAliases? aliases)
@@ -100,7 +100,7 @@ public class SQLite : ISql
             if (Transaction != null)
                 sqlcmd.Transaction = Transaction;
 
-            sqlcmd.ExecuteNonQuery();
+            return sqlcmd.ExecuteNonQuery();
         }
         finally
         {
@@ -108,23 +108,46 @@ public class SQLite : ISql
         }
     }
 
-    void ISql.ExecuteNonQuery(
+    int ISql.ExecuteNonQuery(
         SqlCommandTextInit cmdText,
         CustomizeCommandDelegate? customizeParams)
     {
-        ((ISql)this).ExecuteNonQuery(cmdText.CommandText, customizeParams, cmdText.Aliases);
+        return ((ISql)this).ExecuteNonQuery(cmdText.CommandText, customizeParams, cmdText.Aliases);
     }
     #endregion
 
     #region Scalar Queries
 
-    private int NExecuteScalar(string sQuery, TableAliases? aliases = null)
+    private T TExecuteScalar<T>(string sQuery, TableAliases? aliases = null, CustomizeCommandDelegate? customizeParams = null)
     {
         ISqlCommand sqlcmd = ((ISql)this).CreateCommand();
 
         try
         {
             sqlcmd.CommandText = aliases?.ExpandAliases(sQuery) ?? sQuery;
+            customizeParams?.Invoke(sqlcmd);
+
+            if (Transaction != null)
+                sqlcmd.Transaction = this.Transaction;
+
+            return (T)sqlcmd.ExecuteScalar();
+        }
+        finally
+        {
+            sqlcmd.Close();
+        }
+    }
+
+
+    private int NExecuteScalar(string sQuery, TableAliases? aliases = null, CustomizeCommandDelegate? customizeParams = null)
+    {
+        ISqlCommand sqlcmd = ((ISql)this).CreateCommand();
+
+        try
+        {
+            sqlcmd.CommandText = aliases?.ExpandAliases(sQuery) ?? sQuery;
+            customizeParams?.Invoke(sqlcmd);
+
             if (Transaction != null)
                 sqlcmd.Transaction = this.Transaction;
 
@@ -138,13 +161,15 @@ public class SQLite : ISql
         }
     }
 
-    string ISql.SExecuteScalar(SqlCommandTextInit cmdText)
+    string ISql.SExecuteScalar(SqlCommandTextInit cmdText, CustomizeCommandDelegate? customizeParams)
     {
         ISqlCommand sqlcmd = ((ISql)this).CreateCommand();
 
         try
         {
             sqlcmd.CommandText = cmdText.Aliases?.ExpandAliases(cmdText.CommandText) ?? cmdText.CommandText;
+            customizeParams?.Invoke(sqlcmd);
+
             if (Transaction != null)
                 sqlcmd.Transaction = this.Transaction;
 
@@ -156,21 +181,34 @@ public class SQLite : ISql
         }
     }
 
-    int ISql.NExecuteScalar(SqlCommandTextInit cmdText)
+    int ISql.NExecuteScalar(SqlCommandTextInit cmdText, CustomizeCommandDelegate? customizeParams)
     {
-        return NExecuteScalar(cmdText.CommandText, cmdText.Aliases);
+        return NExecuteScalar(cmdText.CommandText, cmdText.Aliases, customizeParams);
     }
 
-    DateTime ISql.DttmExecuteScalar(SqlCommandTextInit cmdText)
+    T ISql.TExecuteScalar<T>(SqlCommandTextInit cmdText, CustomizeCommandDelegate? customizeParams)
     {
-        string s = ((ISql)this).SExecuteScalar(cmdText);
+        return TExecuteScalar<T>(cmdText.CommandText, cmdText.Aliases, customizeParams);
+    }
+
+    DateTime ISql.DttmExecuteScalar(SqlCommandTextInit cmdText, CustomizeCommandDelegate? customizeParams)
+    {
+        string s = ((ISql)this).SExecuteScalar(cmdText, customizeParams);
 
         return DateTime.Parse(SQLite.Iso8601DateFromPackedSqliteDate(s));
     }
 
-#endregion
+    #endregion
 
     #region Readers
+
+    ISqlReader ISql.ExecuteQuery(
+        Guid crids,
+        SqlCommandTextInit cmdText,
+        CustomizeCommandDelegate? customizeDelegate)
+    {
+        return ((ISql)this).ExecuteQuery(crids, cmdText.CommandText, cmdText.Aliases, customizeDelegate);
+    }
 
     ISqlReader ISql.ExecuteQuery(
         Guid crids,
@@ -206,6 +244,15 @@ public class SQLite : ISql
 
     T ISql.ExecuteDelegatedQuery<T>(
         Guid crids,
+        SqlCommandTextInit cmdText,
+        ISqlReader.DelegateReader<T> delegateReader,
+        CustomizeCommandDelegate? customizeDelegate)
+    {
+        return ((ISql)this).ExecuteDelegatedQuery(crids, cmdText.CommandText, delegateReader, cmdText.Aliases, customizeDelegate);
+    }
+
+    T ISql.ExecuteDelegatedQuery<T>(
+        Guid crids,
         string query,
         ISqlReader.DelegateReader<T> delegateReader,
         TableAliases? aliases,
@@ -237,6 +284,10 @@ public class SQLite : ISql
             sqlr.Close();
         }
     }
+
+    T ISql.ExecuteMultiSetDelegatedQuery<T>(
+        Guid crids, SqlCommandTextInit cmdText, ISqlReader.DelegateMultiSetReader<T> delegateReader, CustomizeCommandDelegate? customizeDelegate) =>
+        throw new SqlExceptionNotImplementedInThisClient();
 
     T ISql.ExecuteMultiSetDelegatedQuery<T>(
         Guid crids, string sQuery, ISqlReader.DelegateMultiSetReader<T> delegateReader, TableAliases? aliases, CustomizeCommandDelegate? customizeDelegate) =>

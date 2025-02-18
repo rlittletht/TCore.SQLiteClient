@@ -154,18 +154,21 @@ public class SQLiteReader: ISqlReader
     Int16 ISqlReader.GetInt16(int index) => _Reader.GetInt16(index);
     Int32 ISqlReader.GetInt32(int index) => _Reader.GetInt32(index);
     string ISqlReader.GetString(int index) => _Reader.GetString(index);
-    Guid ISqlReader.GetGuid(int index) => Guid.Parse(_Reader.GetString(index));
+    Guid ISqlReader.GetGuid(int index) => _Reader.GetFieldAffinity(index) == TypeAffinity.Blob ? _Reader.GetGuid(index) : Guid.Parse(_Reader.GetString(index));
     double ISqlReader.GetDouble(int index) => _Reader.GetDouble(index);
     Int64 ISqlReader.GetInt64(int index) => _Reader.GetInt64(index);
     DateTime ISqlReader.GetDateTime(int index) => _Reader.GetDateTime(index);
+    bool ISqlReader.GetBoolean(int index) => _Reader.GetBoolean(index);
 
     Int16? ISqlReader.GetNullableInt16(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt16(index);
     Int32? ISqlReader.GetNullableInt32(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt32(index);
     string? ISqlReader.GetNullableString(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetString(index);
-    Guid? ISqlReader.GetNullableGuid(int index) => _Reader.IsDBNull(index) ? null : Guid.Parse(_Reader.GetString(index));
+    Guid? ISqlReader.GetNullableGuid(int index) => _Reader.IsDBNull(index) ? null :
+        _Reader.GetFieldAffinity(index) == TypeAffinity.Blob ? _Reader.GetGuid(index) : Guid.Parse(_Reader.GetString(index));
     double? ISqlReader.GetNullableDouble(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetDouble(index);
     Int64? ISqlReader.GetNullableInt64(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetInt64(index);
     DateTime? ISqlReader.GetNullableDateTime(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetDateTime(index);
+    bool? ISqlReader.GetNullableBoolean(int index) => _Reader.IsDBNull(index) ? null : _Reader.GetBoolean(index);
 
     bool ISqlReader.IsDBNull(int index) => _Reader.IsDBNull(index);
 
